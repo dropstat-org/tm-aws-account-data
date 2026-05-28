@@ -1,0 +1,70 @@
+version: 2.0
+type: terraform
+agent:
+  size: l
+  packages:
+    - terraform=1.5.7-1
+    - tflint
+    - terraform-docs
+    - tfsec
+    - terragrunt=0.28.20-1
+    - rsync
+metadata:
+  productId: tm
+  componentId: aws-get-setup
+  version: 1.0.3
+  valueStream: habilitadores-digitales
+stages:
+  - type: linter
+    enabled: true
+    report:
+      type: checkstyle
+      pattern: .*/checkstyle/.*\.xml$
+      reporter: TFLint
+    commands:
+      - make mk-init
+      - make terraform/checkstyle
+      - make terraform/validate
+      - make terraform/compliance
+  - type: pre_deploy
+    enabled: true
+    runConfirmation: true
+    userFolder: true
+    deployId: develop
+    configMap:
+      develop:
+        clusters:
+          - id: "aws-pcino-d-secu"
+            type: "aws"
+    commands:
+      - terragrunt plan -no-color --terragrunt-source-update      
+  - type: deploy_opa
+    enabled: true
+    runConfirmation: true
+    userFolder: true
+    deployId: develop
+    configMap:
+      develop:
+        clusters:
+          - id: "aws-pcino-d-secu"
+            type: "aws"
+    commands:
+      - terragrunt plan -no-color --terragrunt-source-update
+  - type: deploy
+    enabled: true
+    runConfirmation: false
+    deployId: develop
+    configMap:
+      develop:
+        clusters:
+          - id: "aws-pcino-d-secu"
+            type: "aws"
+    commands:
+      - terragrunt destroy -no-color --auto-approve
+      - terragrunt plan -no-color --terragrunt-source-update
+      - terragrunt apply -no-color -auto-approve
+      - terragrunt destroy -no-color --auto-approve
+  - type: release
+    enabled: true
+    commands:
+      - echo release module

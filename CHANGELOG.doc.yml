@@ -1,0 +1,29 @@
+version: 0
+sections:
+  - type: template
+    template_id: changelog
+    data_source:
+      pipe: pipeline.yml
+    input_data_source:
+      - version: v1.0.3
+        date: 2026-01-29
+        features:
+          - SISSRETRAN-346, Se agrega soporte completo para cuentas con prefijo pcic2-p
+      - version: v1.0.2
+        date: 2024-12-30
+        features:
+          - SPL-621, se adiciona context pcicde
+      - version: v1.0.1
+        date: 2024-07-09
+        features:
+          - SPL-309, Se agrega variable de entrada que permite especificar el ID de la cuenta, ej. 'pcino-d-secu', 'pcino-d-cpag', etc
+        bug_fixes:
+          - |
+            SPL-309, Actualmente el módulo construye un objeto llamado "account" con datos sobre la cuenta, los cuales son retornados en el output "account",
+            para armar este objeto el módulo intenta obtener el ID de la cuenta desde el nombre de la VPC, ya que el estandar de TBK es nombrar la VPC
+            con el ID de la cuenta, pero hay ocasiones en que el nombre de la VPC no cumple con un formato estandar lo que provocaba que el objeto "account"
+            no se pudiese formar, para resolver este problema puede entregar la variable de entrada llamada "env_id" con el ID de la cuenta
+      - version: v1.0.0
+        date: 2024-05-15
+        features:
+          - Release modulo aws-get-setup
