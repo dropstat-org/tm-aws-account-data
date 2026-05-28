@@ -1,13 +1,15 @@
-# tm_config
+# tm-aws-account-data
 
-Terraform module that reads shared AWS infrastructure from the current account and exposes it as outputs. Consumers use these outputs to reference the VPC, subnets, route tables, and IAM roles without duplicating data-source lookups across every module.
+Terraform module that reads shared AWS infrastructure from the current account and exposes it as outputs. Consumers use these outputs to reference the VPC, subnets, and route tables without duplicating data-source lookups across every module.
+
+Works across all Dropstat account types: **workload** (dev/staging/prod), **network**, and **shared-services**.
 
 - [CHANGELOG](CHANGELOG.md)
 - [Examples](examples/)
 
 ## Usage
 
-Invoke without parameters — the module auto-detects the account from the VPC name tag:
+Invoke without parameters — the module auto-detects the account from the VPC `Name` tag:
 
 ```hcl
 module "config" {
@@ -35,33 +37,31 @@ module.config.vpc.id
 module.config.vpc.cidr_block
 module.config.vpc.tags
 
-# Subnets by layer
-module.config.subnets.publics   # list of aws_subnet objects
-module.config.subnets.privates
-module.config.subnets.secures   # network / TGW-attachment subnets
-module.config.subnets.data
+# Subnets by layer (empty list when a layer has no subnets in the account)
+module.config.subnets.publics   # public subnets — NAT GW, ALBs (network account)
+module.config.subnets.privates  # workload subnets — ECS tasks, Lambda
+module.config.subnets.secures   # TGW attachment ENIs (secu / tgw-attachment)
+module.config.subnets.data      # data subnets — Aurora, ElastiCache
+
+# Subnet ID lists (convenience)
+[for s in module.config.subnets.privates : s.id]
+[for s in module.config.subnets.data     : s.id]
 
 # Route tables by layer
 module.config.routes.publics    # map of subnet_id → route_table_id
 module.config.routes.privates
 module.config.routes.secures
 
-# IAM roles
-module.config.iam_roles.ec2_ssm.role_arn
-module.config.iam_roles.ecs_instance.role_arn
-module.config.iam_roles.db_monitoring.role_arn
-module.config.iam_roles.backup_restore.role_arn
-
 # Account metadata
 module.config.account.id
-module.config.account.environment  # "dev" | "qa" | "prod"
+module.config.account.environment  # "dev" | "qa" | "prod" | "network" | "shared-services"
 module.config.account.org          # "dropstat"
-module.config.account.region
+module.config.account.region       # "us-east-2"
 ```
 
 ### `env_id` — fallback for non-standard VPC names
 
-The module parses `account`, `environment`, and `context` from the VPC `Name` tag. If your VPC name does not follow the standard pattern (`pci-<context>-<env>-<name>` or `<context>-<env>-<name>`), pass the account ID manually:
+The module parses `environment` and `org` from the VPC `Name` tag. If the VPC name cannot be parsed, pass it explicitly:
 
 ```hcl
 module "config" {
@@ -76,7 +76,6 @@ module "config" {
 |-----------|---------|
 | terraform | >= 1.3  |
 | aws       | ~> 5.0  |
-| random    | ~> 3.1  |
 
 ## Providers
 
@@ -106,31 +105,38 @@ module "config" {
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| `env_id` | Optional. Account ID (e.g. `pcino-d-proc`). Required when the VPC name does not match the standard naming pattern. | `string` | `null` | no |
+| `env_id` | Optional. VPC Name tag value (e.g. `dropstat-dev-vpc`). Use when auto-detection fails. | `string` | `null` | no |
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
-| `vpc` | VPC data: `id`, `arn`, `cidr_block`, `tags`, `owner_id`, `enable_dns_hostnames`, `enable_dns_support` |
-| `subnets` | Subnet lists grouped by layer: `publics`, `privates`, `secures`, `data`. Each entry is an [aws_subnet](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/subnet) object. |
-| `routes` | Route table maps grouped by layer: `publics`, `privates`, `secures`. Each entry is a `subnet_id → route_table_id` map. |
-| `iam_roles` | Map of common IAM roles and instance profiles: `backup_restore`, `ec2_ssm`, `ecs_instance`, `db_monitoring`. |
-| `account` | Account metadata derived from the VPC name: `id`, `name`, `environment`, `org`, `region`. |
-| `trusted_cidrs` | List of trusted CIDR blocks with description and ownership flag. |
+| `vpc` | VPC attributes: `id`, `arn`, `cidr_block`, `tags`, `owner_id`, `enable_dns_hostnames`, `enable_dns_support` |
+| `subnets` | Subnet lists by layer: `publics`, `privates`, `secures`, `data`. Empty list when a layer has no subnets in the account. |
+| `routes` | Route table maps by layer: `publics`, `privates`, `secures`. Each entry is `subnet_id → route_table_id`. |
+| `account` | Account metadata: `id`, `name`, `environment`, `org`, `region`. |
 
-## VPC discovery
+## VPC and subnet discovery
 
-The module selects the VPC by matching the `Name` tag against `dropstat-*` (e.g. `dropstat-dev-vpc`, `dropstat-prod-vpc`).
+The module selects the VPC by matching the `Name` tag against `dropstat-*`.
 
-Subnets are resolved by `Name` tag:
+Subnets are resolved by `subnet-type` tag scoped to the discovered VPC:
 
-| Layer | Tag values |
-|-------|-----------|
-| public | `A1_Public_Subnet`, `A2_Public_Subnet`, `A3_Public_Subnet` |
-| private | `D1_Private_Subnet`, `D2_Private_Subnet`, `D3_Private_Subnet` |
-| secures (network) | `B1_Private_Network_Subnet`, `B2_Private_Network_Subnet`, `B3_Private_Network_Subnet` |
-| data | `C1_Private_Data_Subnet`, `C2_Private_Data_Subnet`, `C3_Private_Data_Subnet` |
+| Output layer | `subnet-type` tag | Account | Subnet purpose |
+|---|---|---|---|
+| `publics` | `public` | network | NAT Gateway, future ALBs |
+| `privates` | `workload` | dev / staging / prod / shared-services | ECS tasks, Lambda |
+| `secures` | `secu` | dev / staging / prod / shared-services | TGW attachment ENIs |
+| `secures` | `tgw-attachment` | network | TGW attachment ENIs in egress VPC |
+| `data` | `data` | dev / staging / prod | Aurora, ElastiCache |
+
+Layers with no matching subnets return an empty list — no error.
+
+| Account | VPC name | Populated layers |
+|---------|----------|-----------------|
+| dev / staging / prod | `dropstat-{env}-vpc` | privates, secures, data |
+| network | `dropstat-egress-vpc` | publics, secures |
+| shared-services | `dropstat-shared-services-vpc` | privates, secures |
 
 ## Contributing
 
