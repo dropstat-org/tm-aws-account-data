@@ -11,7 +11,7 @@ Invoke without parameters — the module auto-detects the account from the VPC n
 
 ```hcl
 module "config" {
-  source = "git::https://github.com/dropstat-org/tm_config.git?ref=v1.0.0"
+  source = "git::https://github.com/dropstat-org/tm-aws-account-data.git?ref=v1.0.0"
 }
 ```
 
@@ -19,7 +19,7 @@ To target a different region, pass a provider alias:
 
 ```hcl
 module "config" {
-  source = "git::https://github.com/dropstat-org/tm_config.git?ref=v1.0.0"
+  source = "git::https://github.com/dropstat-org/tm-aws-account-data.git?ref=v1.0.0"
 
   providers = {
     aws = aws.us-east-2
@@ -65,7 +65,7 @@ The module parses `account`, `environment`, and `context` from the VPC `Name` ta
 
 ```hcl
 module "config" {
-  source = "git::https://github.com/dropstat-org/tm_config.git?ref=v1.0.0"
+  source = "git::https://github.com/dropstat-org/tm-aws-account-data.git?ref=v1.0.0"
   env_id = "pcino-d-secu"
 }
 ```

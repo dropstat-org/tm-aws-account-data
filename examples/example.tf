@@ -7,7 +7,7 @@
 # and resolves all subnets, route tables, and shared IAM roles from it.
 
 module "config" {
-  source = "../"
+  source = "git::https://github.com/dropstat-org/tm-aws-account-data.git?ref=v1.0.0"
   env_id = "dropstat-dev"
 }
 
