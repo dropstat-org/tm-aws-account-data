@@ -8,7 +8,7 @@
 
 module "config" {
   source = "git::https://github.com/dropstat-org/tm-aws-account-data.git?ref=v1.0.0"
-  env_id = "dropstat-dev"
+  env_id = "dropstat-dev-vpc"
 }
 
 # ── VPC ───────────────────────────────────────────────────────────────────────
@@ -46,5 +46,6 @@ locals {
 
   account_id  = module.config.account.id
   environment = module.config.account.environment  # "dev"
+  org         = module.config.account.org          # "dropstat"
   region      = module.config.account.region       # "us-east-2"
 }

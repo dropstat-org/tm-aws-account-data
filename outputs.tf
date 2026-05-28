@@ -58,7 +58,7 @@ output "iam_roles" {
 }
 
 output "account" {
-  description = "Datos sobre la cuenta."
+  description = "Account metadata derived from the VPC name: id, name, environment, org, region."
   value       = local.account
 }
 

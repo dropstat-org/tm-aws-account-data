@@ -55,7 +55,7 @@ module.config.iam_roles.backup_restore.role_arn
 # Account metadata
 module.config.account.id
 module.config.account.environment  # "dev" | "qa" | "prod"
-module.config.account.context      # "npci" | "c2" | "cde"
+module.config.account.org          # "dropstat"
 module.config.account.region
 ```
 
@@ -66,7 +66,7 @@ The module parses `account`, `environment`, and `context` from the VPC `Name` ta
 ```hcl
 module "config" {
   source = "git::https://github.com/dropstat-org/tm-aws-account-data.git?ref=v1.0.0"
-  env_id = "pcino-d-secu"
+  env_id = "dropstat-dev-vpc"
 }
 ```
 
@@ -116,7 +116,7 @@ module "config" {
 | `subnets` | Subnet lists grouped by layer: `publics`, `privates`, `secures`, `data`. Each entry is an [aws_subnet](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/subnet) object. |
 | `routes` | Route table maps grouped by layer: `publics`, `privates`, `secures`. Each entry is a `subnet_id → route_table_id` map. |
 | `iam_roles` | Map of common IAM roles and instance profiles: `backup_restore`, `ec2_ssm`, `ecs_instance`, `db_monitoring`. |
-| `account` | Account metadata derived from the VPC name: `id`, `name`, `environment`, `context`, `region`. |
+| `account` | Account metadata derived from the VPC name: `id`, `name`, `environment`, `org`, `region`. |
 | `trusted_cidrs` | List of trusted CIDR blocks with description and ownership flag. |
 
 ## VPC discovery
